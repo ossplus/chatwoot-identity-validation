@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Chatwoot Identity Validation for WooCommerce
  * Description: Integrates Chatwoot with WooCommerce, sending additional user details and enabling identity validation using HMAC.
- * Version: 1.0
+ * Version: 1.1
  * Author: Marcos Lisboa (Pixel Infinito)
  * Author URI: https://pixel.ao
  * Text Domain: chatwoot-identity-validation
@@ -11,31 +11,38 @@
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * WC requires at least: 3.0.0
  * WC tested up to: 8.0.0
+ * WooCommerce-HPOS-Compatible: yes
  */
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// Add cookie-based logout reset functionality
+add_action('before_woocommerce_init', function() {
+    if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class)) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+    }
+});
+
 function chatwoot_reset_on_logout() {
-    // Only proceed if Chatwoot is configured
     $chatwoot_base_url = get_option('chatwoot_base_url', '');
     $chatwoot_widget_token = get_option('chatwoot_widget_token', '');
-    
+
     if (empty($chatwoot_base_url) || empty($chatwoot_widget_token)) {
         return;
     }
-    
-    // Set a cookie to indicate a logout occurred
+
     setcookie('chatwoot_reset_needed', '1', time() + 300, COOKIEPATH, COOKIE_DOMAIN);
 }
 add_action('wp_logout', 'chatwoot_reset_on_logout');
 
-// Check for the reset cookie and handle it
 function chatwoot_check_reset_needed() {
+    if (defined('WC_DOING_EMAIL') && WC_DOING_EMAIL || wp_doing_ajax() || wp_doing_cron()) {
+        return;
+    }
+
     $debug_mode = get_option('chatwoot_debug_mode', 'false') === 'true';
-    
+
     if (isset($_COOKIE['chatwoot_reset_needed']) && $_COOKIE['chatwoot_reset_needed'] === '1') {
         // Clear the cookie
         setcookie('chatwoot_reset_needed', '', time() - 3600, COOKIEPATH, COOKIE_DOMAIN);
@@ -48,13 +55,10 @@ function chatwoot_check_reset_needed() {
                 var checkChatwootInterval = setInterval(function() {
                     if (window.$chatwoot && typeof window.$chatwoot.reset === 'function') {
                         clearInterval(checkChatwootInterval);
-                        
                         <?php if ($debug_mode) : ?>
                         console.log('Chatwoot detected after logout - resetting session');
                         <?php endif; ?>
-                        
                         window.$chatwoot.reset();
-                        
                         <?php if ($debug_mode) : ?>
                         console.log('Chatwoot session reset complete');
                         <?php endif; ?>
@@ -76,6 +80,10 @@ function chatwoot_check_reset_needed() {
 add_action('wp_head', 'chatwoot_check_reset_needed', 999);
 
 function chatwoot_identity_validation() {
+    if (defined('WC_DOING_EMAIL') && WC_DOING_EMAIL || wp_doing_ajax() || wp_doing_cron()) {
+        return;
+    }
+
     $chatwoot_base_url     = get_option('chatwoot_base_url', '');
     $chatwoot_widget_token = get_option('chatwoot_widget_token', '');
     $chatwoot_hmac_token   = get_option('chatwoot_hmac_token', '');
@@ -89,7 +97,7 @@ function chatwoot_identity_validation() {
     $use_browser_language  = get_option('chatwoot_use_browser_language', 'true') === 'true';
     $widget_type           = get_option('chatwoot_widget_type', 'standard');
     $dark_mode             = get_option('chatwoot_dark_mode', 'auto');
-    
+
     if (empty($chatwoot_base_url) || empty($chatwoot_widget_token)) {
         return; // Do not load if required settings are missing
     }
@@ -101,7 +109,7 @@ function chatwoot_identity_validation() {
     $user_country = '';
     $user_description = '';
     $auth_token = '';
-    
+
     if (is_user_logged_in() && !empty($chatwoot_hmac_token)) {
         $user = wp_get_current_user();
         $identifier = $user->user_email;
@@ -126,7 +134,6 @@ function chatwoot_identity_validation() {
             // Create a description with useful customer info
             $order_count = wc_get_customer_order_count($user->ID);
             $total_spent = wc_format_decimal(wc_get_customer_total_spent($user->ID), 2);
-            
             $user_description = sprintf(
                 'Customer since: %s | Orders: %d | Total spent: %s | Country: %s',
                 date_i18n(get_option('date_format'), $customer->get_date_created()->getTimestamp()),
@@ -148,10 +155,10 @@ function chatwoot_identity_validation() {
                 'country'      => $user_country
             )
         );
-        
+
         $user_data_json = json_encode($user_data);
     }
-    
+
     ?>
     <script>
         // Define Chatwoot settings first, before loading the SDK
@@ -196,7 +203,6 @@ function chatwoot_identity_validation() {
             }
         })(document, 'script');
     </script>
-    
     <script>
         // Separate script for event handling to ensure clean initialization
         document.addEventListener('DOMContentLoaded', function() {
@@ -205,7 +211,7 @@ function chatwoot_identity_validation() {
             } else {
                 initializeChatwoot();
             }
-            
+
             function initializeChatwoot() {
                 // Add a small delay to ensure Chatwoot is fully initialized
                 setTimeout(function() {
@@ -217,7 +223,7 @@ function chatwoot_identity_validation() {
                         
                         // First set user data if available
                         <?php if (is_user_logged_in() && !empty($chatwoot_hmac_token)) : ?>
-                            if (window.$chatwoot && typeof window.$chatwoot.setUser === 'function') {
+                        if (window.$chatwoot && typeof window.$chatwoot.setUser === 'function') {
                                 <?php if ($debug_mode) : ?>
                                 // For debugging - show what we're sending
                                 console.log('Setting user with identifier:', "<?php echo esc_js($identifier); ?>");
