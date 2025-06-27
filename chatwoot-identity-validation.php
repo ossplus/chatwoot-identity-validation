@@ -94,6 +94,7 @@ function chatwoot_identity_validation() {
     $show_unread_dialog    = get_option('chatwoot_show_unread_dialog', 'false') === 'true';
     $widget_position       = get_option('chatwoot_widget_position', 'right');
     $widget_locale         = get_option('chatwoot_widget_locale', 'en');
+    $widget_launcher_title = get_option('chatwoot_widget_launcher_title', 'Chat with us');
     $use_browser_language  = get_option('chatwoot_use_browser_language', 'true') === 'true';
     $widget_type           = get_option('chatwoot_widget_type', 'standard');
     $dark_mode             = get_option('chatwoot_dark_mode', 'auto');
@@ -167,6 +168,7 @@ function chatwoot_identity_validation() {
             showUnreadMessagesDialog: <?php echo $show_unread_dialog ? 'true' : 'false'; ?>,
             position: "<?php echo esc_js($widget_position); ?>",
             locale: "<?php echo esc_js($widget_locale); ?>",
+            launcherTitle: "<?php echo esc_js($widget_launcher_title); ?>",
             useBrowserLanguage: <?php echo $use_browser_language ? 'true' : 'false'; ?>,
             type: "<?php echo esc_js($widget_type); ?>",
             darkMode: "<?php echo esc_js($dark_mode); ?>"
@@ -359,6 +361,13 @@ function chatwoot_identity_validation_settings_page() {
                     </td>
                 </tr>
                 <tr>
+                    <th><label for="chatwoot_widget_launcher_title">Widget Language</label></th>
+                    <td>
+                        <input type="text" name="chatwoot_widget_launcher_title" id="chatwoot_widget_launcher_title" value="<?php echo esc_attr(get_option('chatwoot_widget_launcher_title', 'Chat with us')); ?>" class="regular-text">
+                        <p class="description">Chat with us?</p>
+                    </td>
+                </tr>
+                <tr>
                     <th><label for="chatwoot_use_browser_language">Use Browser Language</label></th>
                     <td>
                         <select name="chatwoot_use_browser_language" id="chatwoot_use_browser_language">
@@ -465,6 +474,7 @@ function chatwoot_identity_validation_register_settings() {
     register_setting('chatwoot-settings-group', 'chatwoot_show_unread_dialog');
     register_setting('chatwoot-settings-group', 'chatwoot_widget_position');
     register_setting('chatwoot-settings-group', 'chatwoot_widget_locale');
+    register_setting('chatwoot-settings-group', 'chatwoot_widget_launcher_title');
     register_setting('chatwoot-settings-group', 'chatwoot_use_browser_language');
     register_setting('chatwoot-settings-group', 'chatwoot_widget_type');
     register_setting('chatwoot-settings-group', 'chatwoot_dark_mode');
